@@ -10,15 +10,19 @@
 
 # int, int load_game(GameState* state, string filename)
 load_game:
-	addi $sp, $sp, -24	# The input buffer occupies 16($sp)	
-	sw $ra, 0($sp)		# ?
+	addi $sp, $sp, -32	# The input buffer occupies 16($sp)	
+	sw $ra, 0($sp)	
 	sw $s0, 4($sp)	# Stores state
 	sw $s1, 8($sp)	# Stores file descriptor
 	sw $s2, 12($sp)	# Stores address of input buffer
-	sw $s3, 16($sp)	# Stores $v1 return value from the second call to readLine, useful
+	sw $s3, 16($sp)	# Temporary but important storage
+	sw $s4, 20($sp)	# Convenient to store $s0 for later
+	sw $s5, 24($sp)	# Store total amount of stones
 	# ===========================================================
 	move $s0, $a0		# Store state so it isn't overwritten
-	addi $s2, $sp, 20	# Store address of input buffer which is at 20($sp)
+	addi $s2, $sp, 28	# Store address of input buffer which is at 20($sp)
+	move $s4, $s0		# Store state again for later
+	li $s5, 0		# Total amount of stones is 0 at beginning
 	
 	# Open board file
 	li $v0, 13	
@@ -69,6 +73,7 @@ load_game:
 		sb $t0, 0($s0)		# Store tens digit of bot_mancula into 2nd to last byte of state
 		andi $s3, $s3, 0x00FF	# Only care about the last 8 bits of $s3 (ones digit)
 		sb $s3, 1($s0)		# Store ones digit of bot_mancula into last byte of state
+		sb $0, 2($s0)		# Not necessary - just here for debugging gameE3.txt
 		sub $s0, $s0, $v0	# Move state back to original position
 		
 	# moves_executed is 0 at the beginning
@@ -79,9 +84,68 @@ load_game:
 	sb $t0, 5($s0)		# Store 'B' into byte 5 of state (player_turn)
 
 	# Loop to read contents of top row (fourth line)
+	lbu $s3, 2($s0)		# Number of pockets
+	move $t3, $s3		# Need to use $s3 again next loop
+	addi $s0, $s0, 8	# Move board state to byte 8
 	
+	move $a0, $s1		# Move file descriptor to $a0
+	move $a1, $s2		# Move input buffer to $a1
+	li $a2, 2		# Read 2 characters at once into buffer
+	top_contents_loop:
+	li $v0, 14		# Read syscall
+	syscall
+	lbu $t0, 0($s2)		# Read first character from input buffer
+	lbu $t1, 1($s2)		# Read second character from input buffer
+	# Subtask: convert 2 digits to number to add to stones count
+	# addi $t4, $t1, -48
+	# add $s5, $s5, $t4	# Adds one digit to $s5
+	# li $t4, '0'
+	# beq $t0, $t4, store_top_pocket
+	# addi $t4, $t0, -48	# Convert tens digit to numerical value
+	# li $t5, 10
+	# mult $t4, $t5		# Multiply by 10
+	# mflo $t4
+	# add $s5, $s5, $t4	# Add tens digit to $s5
+			
+	store_top_pocket:
+	sb $t0, 0($s0)		# Store tens digit into pocket
+	sb $t1, 1($s0)		# Store ones digit into pocket
+	addi $s0, $s0, 2	# Move on to next pocket
+	addi $t3, $t3, -1	
+	bgtz $t3, top_contents_loop
 	
-	# Loop to read contents of bottom row (fifth line)
+	# Loop to read contents of bottom row (fifth line) [first skip past \r\n or \n]
+	li $a2, 1		# Set amount of characters to read to 1
+	li $v0, 14
+	syscall
+	li $t0, '\r'
+	lbu $t1, 0($s2)
+	bne $t0, $t1, bot_contents_loop
+	li $v0, 14		# \r skipped, now skip the \n
+	syscall			
+	bot_contents_loop:
+	li $v0, 14		# Read syscall
+	li $a2, 2		# Set amount of characters to read back to 2
+	syscall
+	lbu $t0, 0($s2)		# Read first character from input buffer
+	lbu $t1, 1($s2)		# Read second character from input buffer	
+	# Subtask: convert 2 digits to number to add to stones count
+	# addi $t4, $t1, -48
+	# add $s5, $s5, $t4	# Adds one digit to $s5
+	# li $t4, '0'
+	# beq $t0, $t4, store_top_pocket
+	# addi $t4, $t0, -48	# Convert tens digit to numerical value
+	# li $t5, 10
+	# mult $t4, $t5		# Multiply by 10
+	# mflo $t4
+	# add $s5, $s5, $t4	# Add tens digit to $s5
+			
+	store_bot_pocket:
+	sb $t0, 0($s0)		# Store tens digit into pocket
+	sb $t1, 1($s0)		# Store ones digit into pocket
+	addi $s0, $s0, 2	# Move on to next pocket
+	addi $s3, $s3, -1	
+	bgtz $s3, bot_contents_loop
 
 	# Close board file
 	li $v0, 16	
@@ -94,7 +158,9 @@ load_game:
 	lw $s1, 8($sp)
 	lw $s2, 12($sp)
 	lw $s3, 16($sp)
-	addi $sp, $sp, 24
+	lw $s4, 20($sp)
+	lw $s5, 24($sp)
+	addi $sp, $sp, 32
 	jr $ra
 	
 # ($a0: int fd, $a1: int buffer) -> Returns multi (or single)-digit value from file, and 2-digit ASCII value
