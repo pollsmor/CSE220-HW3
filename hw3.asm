@@ -39,6 +39,7 @@ load_game:
 	move $a0, $s1		# Move file descriptor to $a0
 	move $a1, $s2		# Move input buffer to $a1
 	jal getMultiDigitValue
+	sb $v0, 0($s0)		# Store first line's value into byte 0 of state
 
 	# Close board file
 	li $v0, 16	
@@ -53,33 +54,26 @@ load_game:
 	addi $sp, $sp, 20
 	jr $ra
 	
-# int getMultiDigitValue(int fd, int buffer)
-# Returns multi (or single)-digit value from file
+# ($a0: int fd, $a1: int buffer) -> Returns multi (or single)-digit value from file
 getMultiDigitValue:
 	# 20-31 is 12 bytes to store a 12-char long string. Largest int is only 10 digits.
 	# Use 12 instead of 10 to align with a word boundary.
-	addi $sp, $sp, -32	
+	addi $sp, $sp, -24	
 	sw $ra, 0($sp)
-	sw $s0, 4($sp)		# Stores fd
-	sw $s1, 8($sp)		# Stores input buffer
-	sw $s2, 12($sp)		# Store length of value
-	sw $s3, 16($sp)		# Store string being read
+	sw $s0, 4($sp)		# Store length of value
+	sw $s1, 8($sp)		# Store string being read
 	# ===========================================================
-	move $s0, $a0		# Store fd so it isn't overwritten
-	move $s1, $a1		# Store input buffer so it isn't overwritten
-	addi $s3, $sp, 20	# Store address of string which is from 20($sp) to 31($sp)
+	addi $s1, $sp, 12	# Store address of string which is from 12($sp) to 23($sp)
 
-	# First, find length of value
-	li $s2, 0		# Length of value
-	move $a0, $s0		# fd
-	move $a1, $s1		# Input buffer
-	li $a2, 1		# Read 1 character
+	# First, find length of value 
+	li $s0, 0		# Length of value
+	li $a2, 1		# Read 1 character (fd and input buffer are already in the correct slots of $a0 and $a1)
 	li $t0, '\r'
 	li $t1, '\n'
 	findLengthLoop: 
 		li $v0, 14
 		syscall				# Read 1 character to input buffer
-		lbu $t2, 0($s1)			# Load character from input buffer
+		lbu $t2, 0($a1)			# Load character from input buffer
 		beq $t2, $t0, foundSlashR
 		beq $t2, $t1, foundSlashN
 		j continue_length_loop
@@ -89,23 +83,36 @@ getMultiDigitValue:
 		foundSlashN:			# Skip character (\n)
 			j findValue
 		continue_length_loop:	
-			addi $s2, $s2, 1	# Increment length
-			sb $t2, 0($s3)		# Store character in string
-			addi $s3, $s3, 1	# Increment string pointer
+			addi $s0, $s0, 1	# Increment length
+			sb $t2, 0($s1)		# Store character in string
+			addi $s1, $s1, 1	# Increment string pointer
 			j findLengthLoop
 	
 	findValue:
-	sb $0, 0($s3)	# Null terminate string
-	sub $a0, $s3, $s2
-	li $v0, 4
-	syscall
+	sb $0, 0($s1)		# Null terminate string, just feel like doing it
+	li $t0, 0		# Loop from end to start of string
+	li $t1, 10		# Constant 10
+	li $t2, 1		# Multiply this however many times by 10 for each digit
+	li $t3, 0		# To store actual value of all the digits
+	findValueLoop:
+		addi $s1, $s1, -1 		# Decrement string pointer
+		lbu $t4, 0($s1)			# Load next character in the string (but backwards)
+		addi $t4, $t4, -48		# Find actual value of digit
+		mult $t4, $t2			# Multiply it by the appropriate power of 10
+		mflo $t4
+		add $t3, $t3, $t4		# Add to total sum
+		
+		addi $t0, $t0, 1 		# Move on to digit left of this one
+		mult $t2, $t1			# Multiply $t2 by 10
+		mflo $t2
+		bne $t0, $s0, findValueLoop	# Once $t0 reaches the length, stop
 	
+	move $v0, $t3	# Actual value
+	# ===========================================================
 	lw $ra, 0($sp)
 	lw $s0, 4($sp)
 	lw $s1, 8($sp)
-	lw $s2, 12($sp)
-	lw $s3, 16($sp)
-	addi $sp, $sp, 32
+	addi $sp, $sp, 24
 	jr $ra
 	
 get_pocket:
