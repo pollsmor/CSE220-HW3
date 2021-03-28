@@ -20,7 +20,7 @@ load_game:
 	sw $s5, 24($sp)	# Store total amount of stones
 	# ===========================================================
 	move $s0, $a0		# Store state so it isn't overwritten
-	addi $s2, $sp, 28	# Store address of input buffer which is at 20($sp)
+	addi $s2, $sp, 28	# Store address of input buffer which is at 28($sp)
 	move $s4, $s0		# Store state again for later
 	li $s5, 0		# Total amount of stones is 0 at beginning
 	
@@ -44,6 +44,7 @@ load_game:
 	move $a0, $s1		# Move file descriptor to $a0
 	move $a1, $s2		# Move input buffer to $a1
 	jal readLine
+	add $s5, $s5, $v0	# Add amount of stones
 	sb $v0, 1($s0)		# Store first line's value into byte 1 of state (top_mancala)
 	
 	move $t0, $v1		# Copy 2-digit ASCII into $t0
@@ -56,6 +57,7 @@ load_game:
 	move $a0, $s1		
 	move $a1, $s2		
 	jal readLine
+	add $s5, $s5, $v0	# Add amount of stones
 	sb $v0, 0($s0)		# Store second line's value into byte 0 of state (bot_mancala)
 	move $s3, $v1		# Save $v1 for when I know the amount of pockets there are
 	# Read # of pockets per row (third line)
@@ -97,15 +99,15 @@ load_game:
 	lbu $t0, 0($s2)		# Read first character from input buffer
 	lbu $t1, 1($s2)		# Read second character from input buffer
 	# Subtask: convert 2 digits to number to add to stones count
-	# addi $t4, $t1, -48
-	# add $s5, $s5, $t4	# Adds one digit to $s5
-	# li $t4, '0'
-	# beq $t0, $t4, store_top_pocket
-	# addi $t4, $t0, -48	# Convert tens digit to numerical value
-	# li $t5, 10
-	# mult $t4, $t5		# Multiply by 10
-	# mflo $t4
-	# add $s5, $s5, $t4	# Add tens digit to $s5
+	addi $t4, $t1, -48
+	add $s5, $s5, $t4	# Adds one digit to $s5
+	li $t4, '0'
+	beq $t0, $t4, store_top_pocket
+	addi $t4, $t0, -48	# Convert tens digit to numerical value
+	li $t5, 10
+	mult $t4, $t5		# Multiply by 10
+	mflo $t4
+	add $s5, $s5, $t4	# Add tens digit to $s5
 			
 	store_top_pocket:
 	sb $t0, 0($s0)		# Store tens digit into pocket
@@ -122,23 +124,23 @@ load_game:
 	lbu $t1, 0($s2)
 	bne $t0, $t1, bot_contents_loop
 	li $v0, 14		# \r skipped, now skip the \n
-	syscall			
+	syscall		
+	li $a2, 2		# Set amount of characters to read back to 2	
 	bot_contents_loop:
 	li $v0, 14		# Read syscall
-	li $a2, 2		# Set amount of characters to read back to 2
 	syscall
 	lbu $t0, 0($s2)		# Read first character from input buffer
 	lbu $t1, 1($s2)		# Read second character from input buffer	
 	# Subtask: convert 2 digits to number to add to stones count
-	# addi $t4, $t1, -48
-	# add $s5, $s5, $t4	# Adds one digit to $s5
-	# li $t4, '0'
-	# beq $t0, $t4, store_top_pocket
-	# addi $t4, $t0, -48	# Convert tens digit to numerical value
-	# li $t5, 10
-	# mult $t4, $t5		# Multiply by 10
-	# mflo $t4
-	# add $s5, $s5, $t4	# Add tens digit to $s5
+	addi $t4, $t1, -48
+	add $s5, $s5, $t4	# Adds one digit to $s5
+	li $t4, '0'
+	beq $t0, $t4, store_bot_pocket
+	addi $t4, $t0, -48	# Convert tens digit to numerical value
+	li $t5, 10
+	mult $t4, $t5		# Multiply by 10
+	mflo $t4
+	add $s5, $s5, $t4	# Add tens digit to $s5
 			
 	store_bot_pocket:
 	sb $t0, 0($s0)		# Store tens digit into pocket
@@ -152,6 +154,25 @@ load_game:
 	move $a0, $s1	# Move file descriptor to $a0
 	syscall
 
+	# Check amount of stones on board
+	li $t0, 99
+	bgt $s5, $t0, tooManyStones
+	li $v0, 1
+	j checkPockets
+	tooManyStones:
+	li $v0, 0
+	
+	# Check amount of pockets on board
+	checkPockets:
+	li $t0, 98
+	lbu $t1, 2($s4)		# Kept $s4 around for this purpose - contains starting pos of state
+	sll $t1, $t1, 1		# Multiply by 2
+	bgt $t1, $t0, tooManyPockets
+	move $v1, $t1		# Return total number of pockets
+	j end
+	tooManyPockets:
+	li $v1, 0
+	
 	end: 	
 	lw $ra, 0($sp)
 	lw $s0, 4($sp)

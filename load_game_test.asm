@@ -1,5 +1,7 @@
 .data
 board_filename: .asciiz "gameE3.txt"
+v0_value: .asciiz " (v0 return value)"
+v1_value: .asciiz " (v1 return value)"
 .align 2
 state:        
     .byte 0         # bot_mancala       	(byte #0)
@@ -10,7 +12,7 @@ state:
     .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
-    "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    "0108070601000404040404040400"
     
 .text
 .globl main
@@ -20,6 +22,28 @@ la $a1, board_filename
 jal load_game
 # You must write your own code here to check the correctness of the function implementation.
 la $t0, state
+
+# Print $v0
+move $a0, $v0
+li $v0, 1
+syscall
+la $a0, v0_value
+li $v0, 4
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+# Print $v1
+move $a0, $v1
+li $v0, 1
+syscall
+la $a0, v1_value
+li $v0, 4
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
 
 # Print bot_mancala
 lbu $a0, 0($t0)
