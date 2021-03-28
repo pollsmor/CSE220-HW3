@@ -10,7 +10,7 @@
 
 # int, int load_game(GameState* state, string filename)
 load_game:
-	addi $sp, $sp, -32	# The input buffer occupies 16($sp)	
+	addi $sp, $sp, -32	# The input buffer occupies 28($sp)	
 	sw $ra, 0($sp)	
 	sw $s0, 4($sp)	# Stores state
 	sw $s1, 8($sp)	# Stores file descriptor
@@ -60,6 +60,7 @@ load_game:
 	add $s5, $s5, $v0	# Add amount of stones
 	sb $v0, 0($s0)		# Store second line's value into byte 0 of state (bot_mancala)
 	move $s3, $v1		# Save $v1 for when I know the amount of pockets there are
+	
 	# Read # of pockets per row (third line)
 	move $a0, $s1		
 	move $a1, $s2		

@@ -1,5 +1,5 @@
 .data
-board_filename: .asciiz "gameE3.txt"
+board_filename: .asciiz "gameE2.txt"
 v0_value: .asciiz " (v0 return value)"
 v1_value: .asciiz " (v1 return value)"
 .align 2
@@ -12,7 +12,7 @@ state:
     .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
-    "0108070601000404040404040400"
+    "0108070601000404040404040400000000000000000000000000000000000000000000"
     
 .text
 .globl main
@@ -44,6 +44,10 @@ syscall
 li $a0, '\n'
 li $v0, 11
 syscall
+
+# Check $v1 isn't -1
+li $t1, -1
+beq $v1, $t1, endProgram
 
 # Print bot_mancala
 lbu $a0, 0($t0)
@@ -101,6 +105,7 @@ li $a0, '\n'
 li $v0, 11
 syscall
 
+endProgram:
 li $v0, 10
 syscall
 
