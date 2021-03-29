@@ -282,10 +282,7 @@ get_pocket:
 	sll $t1, $t1, 2		# Multiply pockets by 4
 	add $a0, $a0, $t1
 	sll $a2, $a2, 1		# Amount of bytes to go left is 2 * distance
-	li $t0, -1		# Multiply bytes by -1 to go backwards
-	mult $a2, $t0
-	mflo $t0
-	add $a0, $a0, $t0	# Now in the correct pocket
+	sub $a0, $a0, $a2	# Now in the correct pocket
 	# Left byte - tens digit
 	lbu $t0, 0($a0)
 	addi $t0, $t0, -48
@@ -317,6 +314,65 @@ get_pocket:
 	jr $ra
 	
 set_pocket:
+	li $v0, -2			# Assume invalid size
+	# Check size constraint
+	li $t0, 99
+	bgt $a3, $t0, return_set_pocket	# Invalid size should just return with $v0 still set to -2 
+	blt $a3, $0, return_set_pocket
+
+	li $v0, -1			# Assume invalid distance/player
+	# Check distance is valid
+	lbu $t1, 2($a0)			# Get bot_pockets, valid distance is max bot_pockets - 1
+	bge $a2, $t1, return_set_pocket	# Invalid distance should just return with $v0 still set to -1
+
+	# Check player is valid
+	li $t0, 'B'
+	beq $a1, $t0, set_pocket_bot
+	li $t0, 'T'
+	beq $a1, $t0, set_pocket_top	
+	j return_set_pocket		# Invalid player should just return with $v0 still set to -1
+
+	set_pocket_bot:
+	# Number of bytes to reach bottomrightmost pocket from byte 0 of BOARD is 2 * 2 * bot_pockets
+	addi $a0, $a0, 6	# First, skip past the non-board bytes, to byte 0 of BOARD
+	sll $t1, $t1, 2		# Multiply pockets by 4
+	add $a0, $a0, $t1
+	sll $a2, $a2, 1		# Amount of bytes to go left is 2 * distance
+	sub $a0, $a0, $a2	# Now in the correct pocket	
+	# Left byte - tens digit
+	li $t0, 10
+	div $a3, $t0
+	mflo $t1		# Tens digit is quotient of dividend / 10
+	addi $t2, $t1, 48	# Convert tens digit to equivalent ASCII value
+	sb $t2, 0($a0)		# Store into first byte of pocket
+	# Right byte - ones digit
+	mult $t1, $t0
+	mflo $t1		# Multiply tens digit by 10 and subtract size with it for ones digit
+	sub $t2, $a3, $t1	# $t2 now contains ones digit
+	addi $t2, $t2, 48	# Convert ones digit to equivalent ASCII value
+	sb $t2, 1($a0)		# Store into second byte of pocket
+	move $v0, $a3		# Return value: size
+	j return_set_pocket
+	
+	set_pocket_top:
+	addi $a0, $a0, 8	# Merely add 8 to reach first pocket of top row
+	sll $a2, $a2, 1		# Amount of bytes to go right is 2 * distance
+	add $a0, $a0, $a2	# Now in the correct pocket
+	# Left byte - tens digit
+	li $t0, 10
+	div $a3, $t0
+	mflo $t1		# Tens digit is quotient of dividend / 10
+	addi $t2, $t1, 48	# Convert tens digit to equivalent ASCII value
+	sb $t2, 0($a0)		# Store into first byte of pocket
+	# Right byte - ones digit
+	mult $t1, $t0
+	mflo $t1		# Multiply tens digit by 10 and subtract size with it for ones digit
+	sub $t2, $a3, $t1	# $t2 now contains ones digit
+	addi $t2, $t2, 48	# Convert ones digit to equivalent ASCII value
+	sb $t2, 1($a0)		# Store into second byte of pocket
+	move $v0, $a3		# Return value: size
+	
+	return_set_pocket:	
 	jr $ra
 	
 collect_stones:

@@ -1,14 +1,14 @@
 .data
-player: .byte 'T'
+player: .byte 'B'
 distance: .byte 2
-size: .word 10
+size: .word 69
 .align 2
 state:        
     .byte 0         # bot_mancala       	(byte #0)
     .byte 1         # top_mancala       	(byte #1)
     .byte 6         # bot_pockets       	(byte #2)
     .byte 6         # top_pockets        	(byte #3)
-    .byte 2         # moves_executed	(byte #4)
+    .byte 2         # moves_executed		(byte #4)
     .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
@@ -22,6 +22,17 @@ lb $a2, distance
 lw $a3, size
 jal set_pocket
 # You must write your own code here to check the correctness of the function implementation.
+move $a0, $v0
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+la $t0, state
+addi $a0, $t0, 6
+li $v0, 4
+syscall
 
 li $v0, 10
 syscall
