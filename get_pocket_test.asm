@@ -1,6 +1,6 @@
 .data
-player: .byte 'T'
-distance: .byte 2
+player: .byte 'B'
+distance: .byte 5
 .align 2
 state:        
     .byte 0         # bot_mancala       	(byte #0)
@@ -20,6 +20,9 @@ lb $a1, player
 lb $a2, distance
 jal get_pocket
 # You must write your own code here to check the correctness of the function implementation.
+move $a0, $v0
+li $v0, 1
+syscall	# Should be 06 for byte 2 of top
 
 li $v0, 10
 syscall

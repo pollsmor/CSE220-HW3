@@ -16,12 +16,11 @@ load_game:
 	sw $s1, 8($sp)	# Stores file descriptor
 	sw $s2, 12($sp)	# Stores address of input buffer
 	sw $s3, 16($sp)	# Temporary but important storage
-	sw $s4, 20($sp)	# Convenient to store $s0 for later
+	sw $s4, 20($sp)	# Store amount of pockets
 	sw $s5, 24($sp)	# Store total amount of stones
 	# ===========================================================
 	move $s0, $a0		# Store state so it isn't overwritten
 	addi $s2, $sp, 28	# Store address of input buffer which is at 28($sp)
-	move $s4, $s0		# Store state again for later
 	li $s5, 0		# Total amount of stones is 0 at beginning
 	
 	# Open board file
@@ -65,6 +64,7 @@ load_game:
 	move $a0, $s1		
 	move $a1, $s2		
 	jal readLine
+	move $s4, $v0		# Store amount of pockets to avoid 8-bit number limit (255)
 	sb $v0, 2($s0)		# Store third line's value into byte 2 of state (bot_pockets)
 	sb $v0, 3($s0)		# Store third line's value into byte 3 of state (top_pockets)
 		# Subtask: fill last 2 bytes of game_board
@@ -76,7 +76,7 @@ load_game:
 		sb $t0, 0($s0)		# Store tens digit of bot_mancula into 2nd to last byte of state
 		andi $s3, $s3, 0x00FF	# Only care about the last 8 bits of $s3 (ones digit)
 		sb $s3, 1($s0)		# Store ones digit of bot_mancula into last byte of state
-		sb $0, 2($s0)		# Not necessary - just here for debugging gameE3.txt
+		sb $0, 2($s0)		# Not necessary - just here for debugging gameE3/03.txt
 		sub $s0, $s0, $v0	# Move state back to original position
 		
 	# moves_executed is 0 at the beginning
@@ -87,7 +87,7 @@ load_game:
 	sb $t0, 5($s0)		# Store 'B' into byte 5 of state (player_turn)
 
 	# Loop to read contents of top row (fourth line)
-	lbu $s3, 2($s0)		# Number of pockets
+	move $s3, $s4		# Number of pockets
 	move $t3, $s3		# Need to use $s3 again next loop
 	addi $s0, $s0, 8	# Move board state to byte 8
 	
@@ -166,7 +166,7 @@ load_game:
 	# Check amount of pockets on board
 	checkPockets:
 	li $t0, 98
-	lbu $t1, 2($s4)		# Kept $s4 around for this purpose - contains starting pos of state
+	move $t1, $s4		
 	sll $t1, $t1, 1		# Multiply by 2
 	bgt $t1, $t0, tooManyPockets
 	move $v1, $t1		# Return total number of pockets
@@ -189,12 +189,11 @@ load_game:
 readLine:
 	# 20-31 is 12 bytes to store a 12-char long string. Largest int is only 10 digits.
 	# Use 12 instead of 10 to align with a word boundary.
-	addi $sp, $sp, -24	
-	sw $ra, 0($sp)
-	sw $s0, 4($sp)		# Store length of value
-	sw $s1, 8($sp)		# Store string being read
+	addi $sp, $sp, -20	
+	sw $s0, 0($sp)		# Store length of value
+	sw $s1, 4($sp)		# Store string being read
 	# ===========================================================
-	addi $s1, $sp, 12	# Store address of string which is from 12($sp) to 23($sp)
+	addi $s1, $sp, 8	# Store address of string which is from 8($sp) to 19($sp)
 
 	# First, find length of value 
 	li $s0, 0		# Length of value
@@ -258,13 +257,63 @@ readLine:
 	
 	move $v0, $t3	# Actual value
 	# ===========================================================
-	lw $ra, 0($sp)
-	lw $s0, 4($sp)
-	lw $s1, 8($sp)
-	addi $sp, $sp, 24
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	addi $sp, $sp, 20
 	jr $ra
 	
 get_pocket:
+	li $v0, -1			# Assume invalid return value
+
+	# Check distance is valid
+	lbu $t1, 2($a0)			# Get bot_pockets, valid distance is max bot_pockets - 1
+	bge $a2, $t1, return_get_pocket	# Invalid distance should just return with $v0 still set to -1
+
+	# Check player is valid
+	li $t0, 'B'
+	beq $a1, $t0, get_pocket_bot
+	li $t0, 'T'
+	beq $a1, $t0, get_pocket_top	
+	j return_get_pocket		# Invalid player should just return with $v0 still set to -1
+	
+	get_pocket_bot:
+	# Number of bytes to reach bottomrightmost pocket from byte 0 of BOARD is 2 * 2 * bot_pockets
+	addi $a0, $a0, 6	# First, skip past the non-board bytes, to byte 0 of BOARD
+	sll $t1, $t1, 2		# Multiply pockets by 4
+	add $a0, $a0, $t1
+	sll $a2, $a2, 1		# Amount of bytes to go left is 2 * distance
+	li $t0, -1		# Multiply bytes by -1 to go backwards
+	mult $a2, $t0
+	mflo $t0
+	add $a0, $a0, $t0	# Now in the correct pocket
+	# Left byte - tens digit
+	lbu $t0, 0($a0)
+	addi $t0, $t0, -48
+	li $t1, 10
+	mult $t0, $t1
+	mflo $v0		# Add tens value to return value
+	# Right byte - ones digit
+	lbu $t0, 1($a0)
+	addi $t0, $t0, -48
+	add $v0, $v0, $t0	# Add ones value to return value
+	j return_get_pocket
+	
+	get_pocket_top:
+	addi $a0, $a0, 8	# Merely add 8 to reach first pocket of top row
+	sll $a2, $a2, 1		# Amount of bytes to go right is 2 * distance
+	add $a0, $a0, $a2	# Now in the correct pocket
+	# Left byte - tens digit
+	lbu $t0, 0($a0)
+	addi $t0, $t0, -48
+	li $t1, 10
+	mult $t0, $t1
+	mflo $v0		# Add tens value to return value
+	# Right byte - ones digit
+	lbu $t0, 1($a0)
+	addi $t0, $t0, -48
+	add $v0, $v0, $t0	# Add ones value to return value
+	
+	return_get_pocket:	
 	jr $ra
 	
 set_pocket:

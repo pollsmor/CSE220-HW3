@@ -1,5 +1,5 @@
 .data
-board_filename: .asciiz "gameE2.txt"
+board_filename: .asciiz "game03.txt"
 v0_value: .asciiz " (v0 return value)"
 v1_value: .asciiz " (v1 return value)"
 .align 2
@@ -12,7 +12,7 @@ state:
     .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
-    "0108070601000404040404040400000000000000000000000000000000000000000000"
+    "0108070601000404040404040400"
     
 .text
 .globl main
