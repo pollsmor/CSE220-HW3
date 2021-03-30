@@ -1,6 +1,6 @@
 .data
 player: .byte 'B' 
-stones: .word 1
+stones: .word 50
 .align 2
 state:        
     .byte 0         # bot_mancala       	(byte #0)
@@ -15,12 +15,66 @@ state:
 .text
 .globl main
 main:
+la $t0, state		
+lbu $a0, 0($t0)		# bot_mancala old
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 1($t0)		# top_mancala old
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+la $t0, state		# state new
+addi $a0, $t0, 6
+li $v0, 4
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+la $a0, state		
+li $v0, 4
+syscall
+
 la $a0, state
 lb $a1, player
 lb $a2, stones
 jal collect_stones
 # You must write your own code here to check the correctness of the function implementation.
+move $a0, $v0		# $v0 return value
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
 
+la $t0, state		
+lbu $a0, 0($t0)		# bot_mancala new
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 1($t0)		# top_mancala new
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+la $t0, state		# state new
+addi $a0, $t0, 6
+li $v0, 4
+syscall
+
+collect_stones_test_end:
 li $v0, 10
 syscall
 

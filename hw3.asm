@@ -376,6 +376,65 @@ set_pocket:
 	jr $ra
 	
 collect_stones:
+	li $v0, -2		# Assume stones count is invalid initially
+	ble $a2, $0, check_player_collect_stones
+	move $v0, $a2		# Only gets run if stones count is valid
+	check_player_collect_stones:
+	li $t0, 'B'
+	beq $t0, $a1, collect_stones_bot
+	li $t0, 'T'
+	beq $t0, $a1, collect_stones_top
+	li $v0, -1		# Invalid player
+	j return_collect_stones	# Return values are set in advance
+	
+	collect_stones_bot:
+	li $t0, -2
+	beq $v0, $t0, return_collect_stones	# If return value is still -2, just return
+	
+	lbu $t0, 0($a0)		# Get bottom mancala value
+	add $t0, $t0, $a2	# Add stones
+	sb $t0, 0($a0)		# Replace bottom mancala value
+	lbu $t1, 2($a0)		# Get amount of pockets
+	sll $t1, $t1, 2		# Multiply by 4
+	addi $t1, $t1, 8	# Skip to first byte of first pocket in game_board
+	
+	add $a0, $a0, $t1	# Increment address of state to second to last byte (contains mancala)
+	# Left byte - tens digit
+	li $t1, 10
+	div $t0, $t1
+	mflo $t2		# Tens digit is quotient of dividend / 10
+	addi $t3, $t2, 48	# Convert tens digit to equivalent ASCII value
+	sb $t3, 0($a0)		# Store into first byte of bot mancala on board
+	# Right byte - ones digit
+	mult $t2, $t1
+	mflo $t2		# Multiply tens digit by 10 and subtract stones with it for ones digit
+	sub $t3, $t0, $t2	# $t3 now contains ones digit
+	addi $t3, $t3, 48	# Convert ones digit to equivalent ASCII value
+	sb $t3, 1($a0)		# Store into second byte of bot mancala on board
+	j return_collect_stones
+	
+	collect_stones_top:
+	li $t0, -2
+	beq $v0, $t0, return_collect_stones	# If return value is still -2, just return
+	
+	lbu $t0, 1($a0)		# Get top mancala value
+	add $t0, $t0, $a2	# Add stones	
+	sb $t0, 1($a0)		# Replace top mancala value
+	
+	# Left byte - tens digit
+	li $t1, 10
+	div $t0, $t1
+	mflo $t2		# Tens digit is quotient of dividend / 10
+	addi $t3, $t2, 48	# Convert tens digit to equivalent ASCII value
+	sb $t3, 6($a0)		# Store into first byte of game_board
+	# Right byte - ones digit
+	mult $t2, $t1
+	mflo $t2		# Multiply tens digit by 10 and subtract stones with it for ones digit
+	sub $t3, $t0, $t2	# $t3 now contains ones digit
+	addi $t3, $t3, 48	# Convert ones digit to equivalent ASCII value
+	sb $t3, 7($a0)		# Store into second byte game_board
+	
+	return_collect_stones:
 	jr $ra
 	
 verify_move:
