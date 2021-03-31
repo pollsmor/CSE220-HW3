@@ -438,9 +438,51 @@ collect_stones:
 	jr $ra
 	
 verify_move:
-	jr  $ra
+	# This function actually calls a helper function!
+	addi $sp, $sp, -8
+	sw $ra, 0($sp)
+	sw $s0, 4($sp)
+	move $s0, $a2		# Store distance argument
+
+	li $v0, 2		# Assume return value is 2 at first
+	li $t0, 99
+	bne $t0, $a2, skipChangeTurn
+	# Swap turns
+	lbu $t0, 5($a0)		# Get current turn
+	li $t1, 'B'
+	beq $t0, $t1, switchToT
+	switchToB:
+	sb $t1, 5($a0)
+	switchToT:
+	li $t1, 'T'
+	sb $t1, 5($a0)
+	j return_verify_move
+	
+	skipChangeTurn:
+	# Run get_pocket, $a0 is already the state argument
+	move $a2, $a1		# "Distance" in get_pocket = "origin_pocket" in verify_move
+	lbu $a1, 5($a0)		# Get current turn into $a1
+	jal get_pocket
+	li $t0, -1		# If $v0 from get_pocket is -1, distance (origin_pocket) is invalid
+	beq $v0, $t0, return_verify_move
+	beq $v0, $0, return_verify_move
+	
+	# Checking -2 return error case
+	move $t0, $v0		# Move amount of stones to $t0 (it is valid)
+	li $v0, -2		# Assume return value is -2 at first
+	beq $s0, $0, return_verify_move		# Distance (in $s0) of 0, just return -2
+	bne $s0, $t0, return_verify_move	# Distance not equal to amount of stones, return -2
+	li $v0, 1				# Move is legal
+	
+	return_verify_move:
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)
+	addi $sp, $sp, 8
+	jr $ra
 	
 execute_move:
+	
+
 	jr $ra
 	
 steal:
