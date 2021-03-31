@@ -481,8 +481,98 @@ verify_move:
 	jr $ra
 	
 execute_move:
-	
+	addi $sp, $sp, -20
+	sw $ra, 0($sp)
+	sw $s0, 4($sp)
+	sw $s1, 8($sp)
+	sw $s2, 12($sp)
+	sw $s3, 16($sp)
+	move $s0, $a0		# Save state argument
+	move $s1, $a1		# Save origin_pocket (distance) argument
+	li $s2, 0		# Amount of stones added to mancala
+	lbu $s4, 5($s0)		# Useful to track whether we're on top or bottom row
 
+	# Call get_pocket to get amount of stones in the relevant pocket
+	move $a1, $s4		# Put player in $a1, $a0 is already filled with state
+	move $a2, $s1		# "distance" in get_pocket is "origin_pocket" in this method.
+	jal get_pocket
+	move $s3, $v0		# Store amount of stones (for iterating with) in $s2
+		
+	# ===================================================================================
+	decrement_stones_loop:	
+	addi $s1, $s1, -1	# Decrement distance will always go in a "clockwise" direction
+	addi $s3, $s3, -1	# Decrement stones
+	li $t0, -1
+	beq $s1, $t0, addToMancala	# If distance equals -1, a mancala has been reached.
+	# Call get_pocket
+	move $a0, $s0			# State argument
+	lbu $a1, 5($s0)			# Player argument
+	move $a2, $s1			# Distance argument
+	jal get_pocket
+	# Call set_pocket with pocket_stones + 1 as size
+	move $a0, $s0			# State argument
+	move $a1, $s4			# Player argument
+	move $a2, $s1			# Distance argument
+	addi $a3, $v0, 1		# pocket_stones + 1
+	jal set_pocket
+		# Check for last stone into pocket
+		bne $s3, $0, decrement_stones_loop
+		bne $v0, $0, return_zero	# Check if last pocket was empty
+		lbu $t0, 5($s0)
+		bne $t0, $s4, return_zero	# Check that the last deposit was in player's row
+		li $v1, 1
+		j return_execute_loop
+		return_zero:
+		li $v1, 0
+		j return_execute_loop
+		
+	addToMancala:
+	# Check whether $s4 matches up with the (current) turn, and add to mancala accordingly.
+	lbu $s1, 2($s0)				# Reset distance to pockets - 1
+	lbu $t0, 5($s0)				# Current turn
+	bne $s4, $t0, switchRow			# If $t0 != $s4, skip adding to mancala
+	# Call collect_stones and increment mancala by 1
+	move $a0, $s0
+	lbu $a1, 5($s0)
+	li $a2, 1
+	jal collect_stones
+	addi $s2, $s2, 1			# Increment stones added to mancala by 1
+	bne $s3, $0, decrement_stones_loop	# If last stone ends up in your mancala, don't swap turns
+	li $v1, 2
+	j skipSwitchTurn
+	switchRow:
+		li $t0, 'B'
+		beq $s4, $t0, switchToT2
+		switchToB2:
+		li $s4, 'B'
+		j advance_execute_loop
+		switchToT2:
+		li $s4, 'T'
+	
+	advance_execute_loop:
+	bne $s3, $0, decrement_stones_loop
+	# ===================================================================================
+	return_execute_loop:
+		# Switch turns
+		lbu $t0, 5($s0)
+		li $t1, 'B'
+		beq $t0, $t1, switchToT3
+		switchToB3:
+		sb $t1, 5($s0)
+		j advance_execute_loop
+		switchToT3:
+		li $t1, 'T'
+		sb $t1, 5($s0)
+	
+	skipSwitchTurn:
+	move $v0, $s2				# Return stones added to mancala
+	
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)
+	lw $s1, 8($sp)
+	lw $s2, 12($sp)
+	lw $s3, 16($sp)
+	addi $sp, $sp, 20
 	jr $ra
 	
 steal:
