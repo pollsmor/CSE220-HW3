@@ -497,6 +497,12 @@ execute_move:
 	move $a2, $s1		# "distance" in get_pocket is "origin_pocket" in this method.
 	jal get_pocket
 	move $s3, $v0		# Store amount of stones (for iterating with) in $s2
+	# Set that pocket to 0
+	move $a0, $s0
+	move $a1, $s4
+	move $a2, $s1
+	move $a3, $0
+	jal set_pocket
 		
 	# ===================================================================================
 	decrement_stones_loop:	
@@ -506,7 +512,7 @@ execute_move:
 	beq $s1, $t0, addToMancala	# If distance equals -1, a mancala has been reached.
 	# Call get_pocket
 	move $a0, $s0			# State argument
-	lbu $a1, 5($s0)			# Player argument
+	move $a1, $s4			# Player argument
 	move $a2, $s1			# Distance argument
 	jal get_pocket
 	# Call set_pocket with pocket_stones + 1 as size
@@ -537,7 +543,7 @@ execute_move:
 	li $a2, 1
 	jal collect_stones
 	addi $s2, $s2, 1			# Increment stones added to mancala by 1
-	bne $s3, $0, decrement_stones_loop	# If last stone ends up in your mancala, don't swap turns
+	bne $s3, $0, switchRow			# If last stone ends up in your mancala, don't swap turns
 	li $v1, 2
 	j skipSwitchTurn
 	switchRow:

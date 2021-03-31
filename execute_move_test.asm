@@ -10,7 +10,7 @@ state:
     .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
-    "0004040404040404040404040400"
+    "0004040404040404040804040400"
 .text
 .globl main
 main:
