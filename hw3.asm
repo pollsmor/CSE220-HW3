@@ -481,12 +481,14 @@ verify_move:
 	jr $ra
 	
 execute_move:
-	addi $sp, $sp, -20
+	addi $sp, $sp, -28
 	sw $ra, 0($sp)
 	sw $s0, 4($sp)
 	sw $s1, 8($sp)
 	sw $s2, 12($sp)
 	sw $s3, 16($sp)
+	sw $s4, 20($sp)
+	sw $s5, 24($sp)
 	move $s0, $a0		# Save state argument
 	move $s1, $a1		# Save origin_pocket (distance) argument
 	li $s2, 0		# Amount of stones added to mancala
@@ -506,6 +508,14 @@ execute_move:
 		
 	# ===================================================================================
 	decrement_stones_loop:	
+	# Uncomment to look at the placing of stones step by step.
+	# addi $a0, $s0, 6
+	# li $v0, 4
+	# syscall
+	# li $a0, '\n'
+	# li $v0, 11
+	# syscall
+	
 	addi $s1, $s1, -1	# Decrement distance will always go in a "clockwise" direction
 	addi $s3, $s3, -1	# Decrement stones
 	li $t0, -1
@@ -515,6 +525,7 @@ execute_move:
 	move $a1, $s4			# Player argument
 	move $a2, $s1			# Distance argument
 	jal get_pocket
+	move $s5, $v0			# Store initial value of get_pocket, useful for return value
 	# Call set_pocket with pocket_stones + 1 as size
 	move $a0, $s0			# State argument
 	move $a1, $s4			# Player argument
@@ -523,7 +534,7 @@ execute_move:
 	jal set_pocket
 		# Check for last stone into pocket
 		bne $s3, $0, decrement_stones_loop
-		bne $v0, $0, return_zero	# Check if last pocket was empty
+		bne $s5, $0, return_zero	# Check if last pocket was empty
 		lbu $t0, 5($s0)
 		bne $t0, $s4, return_zero	# Check that the last deposit was in player's row
 		li $v1, 1
@@ -578,7 +589,9 @@ execute_move:
 	lw $s1, 8($sp)
 	lw $s2, 12($sp)
 	lw $s3, 16($sp)
-	addi $sp, $sp, 20
+	lw $s4, 20($sp)
+	lw $s5, 24($sp)
+	addi $sp, $sp, 28
 	jr $ra
 	
 steal:
