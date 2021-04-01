@@ -686,9 +686,116 @@ steal:
 	jr $ra
 	
 check_row:
+	addi $sp, $sp, -20
+	sw $ra, 0($sp)
+	sw $s0, 4($sp)		# Store state argument
+	sw $s1, 8($sp)
+	sw $s2, 12($sp)
+	sw $s3, 16($sp)
+	move $s0, $a0
+	li $s2, 0		# Store amount of remaining stones in top row
+	li $s3, 0		# Store amount of remaining stones in bottom row
+
+	# Gather all the stones in the top row
+	lbu $s1, 2($s0)		# Get amount of pockets
+	accumulate_top_row_loop:
+	addi $s1, $s1, -1	# Decrement index
+	# Call get_pocket on respective pocket
+	move $a0, $s0
+	li $a1, 'T'
+	move $a2, $s1
+	jal get_pocket
+	add $s2, $s2, $v0	# Add to amount of remaining stones
+	bgt $s1, $0, accumulate_top_row_loop
+	
+	# Gather all the stones in the bottom row
+	lbu $s1, 2($s0)		# Get amount of pockets
+	accumulate_bot_row_loop:
+	addi $s1, $s1, -1	# Decrement index
+	# Call get_pocket on respective pocket
+	move $a0, $s0
+	li $a1, 'B'
+	move $a2, $s1
+	jal get_pocket
+	add $s3, $s3, $v0	# Add to amount of remaining stones
+	bgt $s1, $0, accumulate_bot_row_loop
+	
+	# Check which row is empty (if any)
+	beq $s2, $0, putRemainingStonesInBottomMancala	# Top row is empty
+	beq $s3, $0, putRemainingStonesInTopMancala	# Bottom row is empty
+	# Neither rows are empty
+	li $s1, 0		# Store $v0 return value in $s1 for now so it isn't overwritten
+	j return_check_row
+	putRemainingStonesInBottomMancala:
+	# Clear out the bottom row
+		lbu $s1, 2($s0)		# Get amount of pockets
+		clear_out_bot_row_loop:
+		addi $s1, $s1, -1	# Decrement index
+		# Call set_pocket on respective pocket
+		move $a0, $s0
+		li $a1, 'B'
+		move $a2, $s1
+		li $a3, 0
+		jal set_pocket
+		bgt $s1, $0, clear_out_bot_row_loop
+	# Call collect_stones
+	move $a0, $s0
+	li $a1, 'B'
+	move $a2, $s3		# Bottom row stones
+	jal collect_stones
+	li $s1, 1		# $v0 return value
+	li $t0, 'D'		# Set player turn to done
+	sb $t0, 5($s0)
+	j return_check_row
+	
+	putRemainingStonesInTopMancala:
+	# Clear out the top row
+		lbu $s1, 2($s0)		# Get amount of pockets
+		clear_out_top_row_loop:
+		addi $s1, $s1, -1	# Decrement index
+		# Call set_pocket on respective pocket
+		move $a0, $s0
+		li $a1, 'T'
+		move $a2, $s1
+		li $a3, 0
+		jal set_pocket
+		bgt $s1, $0, clear_out_top_row_loop
+	# Call collect_stones
+	move $a0, $s0
+	li $a1, 'T'
+	move $a2, $s2		# Top row stones
+	jal collect_stones
+	li $s1, 1		# $v0 return value
+	li $t0, 'D'		# Set player turn to done
+	sb $t0, 5($s0)
+	
+	return_check_row:
+	# Check which player has more stones
+	lbu $t0, 0($s0)		# Bottom mancala
+	lbu $t1, 1($s0)		# Top mancala
+	bgt $t0, $t1, player1HasMore
+	blt $t0, $t1, player2HasMore
+	player1HasMore:
+		li $v1, 1
+		j actually_return_lol
+	player2HasMore:
+		li $v1, 2
+		j actually_return_lol
+	li $v1, 0		# Tie
+	
+	actually_return_lol:
+	move $v0, $s1		# $v0 return value
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)
+	lw $s1, 8($sp)
+	lw $s2, 12($sp)
+	lw $s3, 16($sp)
+	addi $sp, $sp, 20
 	jr $ra
 	
 load_moves:
+	
+
 	jr $ra
 	
 play_game:
