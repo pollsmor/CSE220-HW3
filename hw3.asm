@@ -595,6 +595,94 @@ execute_move:
 	jr $ra
 	
 steal:
+	addi $sp, $sp, -16
+	sw $ra, 0($sp)
+	sw $s0, 4($sp)
+	sw $s1, 8($sp)
+	sw $s2, 12($sp)
+	move $s0, $a0		# Store state
+	move $s1, $a1		# Store destination_pocket
+	li $s2, 0		# Store total amount of stones to add to mancala
+
+	# Check which was the former turn
+	lbu $t0, 5($s0)
+	li $t1, 'B'		# If current turn is 'B', former turn was 'T'.
+	beq $t0, $t1, formerTurnWasT
+	formerTurnWasB:
+	# Call get_pocket with 'B' as player argument
+	move $a0, $s0
+	li $a1, 'B'
+	move $a2, $s1
+	jal get_pocket
+	add $s2, $s2, $v0
+	# Now set that pocket to 0
+	move $a0, $s0
+	li $a1, 'B'
+	move $a2, $s1
+	li $a3, 0
+	jal set_pocket
+	# Call get_pocket with 'T' as player argument, use 5 - destination_pocket to align pockets
+	move $a0, $s0
+	li $a1, 'T'
+	li $t0, 5
+	sub $a2, $t0, $s1
+	jal get_pocket
+	add $s2, $s2, $v0
+	# Now set that pocket to 0
+	move $a0, $s0
+	li $a1, 'T'
+	li $t0, 5
+	sub $a2, $t0, $s1
+	li $a3, 0
+	jal set_pocket
+	# Call collect_stones with $s2 as stones argument
+	move $a0, $s0
+	li $a1, 'B'
+	move $a2, $s2
+	jal collect_stones
+	j return_steal
+
+	formerTurnWasT:
+	# Call get_pocket with 'T' as player argument
+	move $a0, $s0
+	li $a1, 'T'
+	move $a2, $s1
+	jal get_pocket
+	add $s2, $s2, $v0
+	# Now set that pocket to 0
+	move $a0, $s0
+	li $a1, 'T'
+	move $a2, $s1
+	li $a3, 0
+	jal set_pocket
+	# Call get_pocket with 'B' as player argument, use 5 - destination_pocket to align pockets
+	move $a0, $s0
+	li $a1, 'B'
+	li $t0, 5
+	sub $a2, $t0, $s1
+	jal get_pocket
+	add $s2, $s2, $v0
+	# Now set that pocket to 0
+	move $a0, $s0
+	li $a1, 'B'
+	li $t0, 5
+	sub $a2, $t0, $s1
+	li $a3, 0
+	jal set_pocket
+	# Call collect_stones with $s2 as stones argument
+	move $a0, $s0
+	li $a1, 'T'
+	move $a2, $s2
+	jal collect_stones
+
+	return_steal:
+	move $v0, $s2		# Return stones added to mancala
+	
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)
+	lw $s1, 8($sp)
+	lw $s2, 12($sp)
+	addi $sp, $sp, 16
 	jr $ra
 	
 check_row:
