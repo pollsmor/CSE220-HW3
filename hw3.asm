@@ -895,8 +895,55 @@ load_moves:
 	addi $sp, $sp, 24
 	jr $ra
 	
+# string moves_filename, string board_filename, GameState* state, byte[] moves, int num_moves_to_execute
 play_game:
-	jr  $ra
+	lw $t0, 0($sp)		# First obtain the num_moves_to_execute from stack pointer
+	addi $sp, $sp, -20
+	sw $ra, 0($sp)		
+	sw $s0, 4($sp)		# Store state
+	sw $s1, 8($sp)		# Store moves array
+	sw $s2, 12($sp)		# Store num_moves_to_execute
+	sw $s3, 16($sp)		# Store various misc. stuff
+	move $s0, $a2
+	move $s1, $a3
+	move $s2, $t0	
+	move $s3, $a0		# Store moves_filename	
+
+	# Call load_game
+	loadgame:
+	move $a0, $s0		# $a1 already contains board_filename
+	jal load_game
+	blez $v0, returnError	# load_game's invalid return values are all <= 0
+	blez $v1, returnError
+	j loadmoves
+	
+	returnError:
+	li $v0, -1
+	li $v1, -1
+	j return_play_game
+	
+	loadmoves:
+	# Call load_moves
+	move $a0, $s1
+	move $a1, $s3
+	jal load_moves
+	li $t0, -1
+	bgtz $v0, actually_play_game
+	li $v0, -1
+	li $v1, -1
+	j return_play_game
+	
+	actually_play_game:
+	
+	
+	return_play_game:
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)
+	lw $s1, 8($sp)
+	lw $s2, 12($sp)
+	lw $s3, 16($sp)
+	addi $sp, $sp, 20
+	jr $ra
 	
 print_board:
 	jr $ra

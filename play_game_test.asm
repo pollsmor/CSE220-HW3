@@ -1,7 +1,7 @@
 .data
 moves_filename: .asciiz "moves01.txt"
 board_filename: .asciiz "game01.txt"
-num_moves_to_execute: .word 10
+num_moves_to_execute: .word 17
 moves: .byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .align 2
 state:        
