@@ -1,5 +1,5 @@
 .data
-filename: .asciiz "moves01.txt"
+filename: .asciiz "moves02.txt"
 .align 0
 moves: .byte 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .text
@@ -10,6 +10,9 @@ la $a1, filename
 jal load_moves
 
 # You must write your own code here to check the correctness of the function implementation.
+move $a0, $v0
+li $v0, 1
+syscall
 
 li $v0, 10
 syscall

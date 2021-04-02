@@ -794,8 +794,105 @@ check_row:
 	jr $ra
 	
 load_moves:
+	addi $sp, $sp, -24	# The input buffer occupies 12($sp)	
+	sw $ra, 0($sp)	
+	sw $s0, 4($sp)	# Stores moves array
+	sw $s1, 8($sp)	# Stores file descriptor
+	sw $s2, 12($sp)	# Stores address of input buffer
+	sw $s3, 16($sp)	# Store amount of rows
+	sw $s4, 20($sp)	# Store number of columns
+	# ===========================================================
+	move $s0, $a0		# Store moves array so it isn't overwritten
+	addi $s2, $sp, 12	# Store address of input buffer which is at 12($sp)
 	
+	# Open board file
+	li $v0, 13	
+	move $a0, $a1	# Move file name to $a0
+	li $a1, 0	# Move reading flag to $a1
+	syscall
+	move $s1, $v0	# Save file descriptor
+	bgtz $s1, readMoves
+	# Error accessing file, close and return -1
+	li $v0, 16	
+	move $a0, $s1	# Move file descriptor to $a0
+	syscall
+	li $v0, -1
+	j return_load_moves
 
+	readMoves:
+	# Read # of columns
+	move $a0, $s1		# Move file descriptor to $a0
+	move $a1, $s2		# Move input buffer to $a1
+	jal readLine
+	move $s4, $v0		# Store amount of columns
+
+	# Read # of rows
+	move $a0, $s1		
+	move $a1, $s2		
+	jal readLine
+	move $s3, $v0	# Store amount of rows
+	
+	# Loop through moves file
+	move $a0, $s1		# Move file descriptor to $a0
+	move $a1, $s2		# Move input buffer to $a1
+	li $a2, 2		# Read 2 characters at once into buffer
+	li $t4, 0		# Store size of moves array for returning later
+	li $t5, 99		# 99 move
+	rowLoop:
+	move $t0, $s4		# Reset columns remaining
+		colLoop:
+		move $a0, $s1		# Move file descriptor to $a0
+		li $v0, 14		# Read syscall
+		syscall
+		lbu $t1, 0($s2)		# Read first character from input buffer
+		lbu $t2, 1($s2)		# Read second character from input buffer
+		addi $t1, $t1, -48	# Convert to numerical representation
+		addi $t2, $t2, -48
+		blt $t1, $0, invalidMove
+		blt $t2, $0, invalidMove
+		li $t3, 9
+		bgt $t1, $t3, invalidMove
+		bgt $t2, $t3, invalidMove
+		
+		# Convert 2 characters to 2-digit number
+		li $t3, 10
+		mult $t1, $t3
+		mflo $t1		# Contains multiple of 10
+		add $t1, $t1, $t2	# Add ones digit
+		sb $t1, 0($s0)		# Add move to moves array
+		j advanceColLoop
+		
+		invalidMove:
+			li $t1, -1
+			sb $t1, 0($s0)
+		
+		advanceColLoop:
+		addi $s0, $s0, 1	# Move forward 1 in moves array
+		addi $t4, $t4, 1	# Append to size of moves array
+		addi $t0, $t0, -1	# Decrement cols remaining
+		bne $t0, $0, colLoop
+
+	sb $t5, 0($s0)		# Store 99 move
+	addi $s0, $s0, 1	# Move forward 1 in moves array
+	addi $t4, $t4, 1	# Append to size of moves array
+	addi $s3, $s3, -1	# Decrement rows remaining
+	bne $s3, $0, rowLoop
+
+	return_load_moves:
+	# Close board file
+	li $v0, 16	
+	move $a0, $s1	# Move file descriptor to $a0
+	syscall
+	
+	addi $v0, $t4, -1	# Don't count the last 99 move
+	
+	lw $ra, 0($sp)	
+	lw $s0, 4($sp)	
+	lw $s1, 8($sp)	
+	lw $s2, 12($sp)	
+	lw $s3, 16($sp)
+	lw $s4, 20($sp)
+	addi $sp, $sp, 24
 	jr $ra
 	
 play_game:
