@@ -450,6 +450,10 @@ verify_move:
 	li $v0, 2		# Assume return value is 2 at first
 	li $t0, 99
 	bne $t0, $a2, skipChangeTurn
+	# Add turn
+	lbu $t0, 4($a0)
+	addi $t0, $t0, 1
+	sb $t0, 4($a0)
 	# Swap turns
 	lbu $t0, 5($a0)		# Get current turn
 	li $t1, 'B'
@@ -955,8 +959,8 @@ play_game:
 	move $s3, $v0		# Store size of moves array
 	# ===========================================================
 	game_loop:
-	beq $s2, $0, endGame	# First condition to exit: num_moves_to_execute is 0		
-	beq $s3, $0, endGame	# Second condition to exit: end of moves array has been reached
+	ble $s2, $0, endGame	# First condition to exit: num_moves_to_execute is 0		
+	ble $s3, $0, endGame	# Second condition to exit: end of moves array has been reached
 	
 	# Obtain move from moves array
 	lbu $s4, 0($s1)
@@ -1032,6 +1036,8 @@ play_game:
 	jr $ra
 
 print_board:
+	
+
 	jr $ra
 	
 write_board:
