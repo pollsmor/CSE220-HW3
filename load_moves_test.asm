@@ -13,6 +13,13 @@ jal load_moves
 move $a0, $v0
 li $v0, 1
 syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+move $a0, $s2
+li $v0, 1
+syscall
 
 li $v0, 10
 syscall

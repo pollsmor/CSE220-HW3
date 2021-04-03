@@ -186,8 +186,8 @@ load_game:
 	jr $ra
 	
 # ($a0: int fd, $a1: int buffer) -> Returns multi (or single)-digit value from file, and 2-digit ASCII value
-readLine:
-	# 20-31 is 12 bytes to store a 12-char long string. Largest int is only 10 digits.
+readLine:	
+	# 8-19 is 12 bytes to store a 12-char long string. Largest int is only 10 digits.
 	# Use 12 instead of 10 to align with a word boundary.
 	addi $sp, $sp, -20	
 	sw $s0, 0($sp)		# Store length of value
@@ -200,9 +200,10 @@ readLine:
 	li $a2, 1		# Read 1 character (fd and input buffer are already in the correct slots of $a0 and $a1)
 	li $t0, '\r'
 	li $t1, '\n'
-	findLengthLoop: 
+
+	findLengthLoop: 	
 		li $v0, 14
-		syscall				# Read 1 character to input buffer
+		syscall				# Read 1 character to input buffer		
 		lbu $t2, 0($a1)			# Load character from input buffer
 		beq $t2, $t0, foundSlashR
 		beq $t2, $t1, foundSlashN
@@ -212,13 +213,13 @@ readLine:
 			syscall
 		foundSlashN:			# Skip character (\n)
 			j find2DigitASCII
-		continue_length_loop:	
+		continue_length_loop: 
 			addi $s0, $s0, 1	# Increment length
 			sb $t2, 0($s1)		# Store character in string
 			addi $s1, $s1, 1	# Increment string pointer
 			j findLengthLoop
 	
-	find2DigitASCII:
+	find2DigitASCII:	
 	sb $0, 0($s1)		# Null terminate string, just feel like doing it
 	move $t1, $s1		# Copy string into $t1
 	# Subtask: put "00" - "99" into $v1
@@ -260,6 +261,7 @@ readLine:
 	lw $s0, 0($sp)
 	lw $s1, 4($sp)
 	addi $sp, $sp, 20
+	
 	jr $ra
 	
 get_pocket:
@@ -268,6 +270,7 @@ get_pocket:
 	# Check distance is valid
 	lbu $t1, 2($a0)			# Get bot_pockets, valid distance is max bot_pockets - 1
 	bge $a2, $t1, return_get_pocket	# Invalid distance should just return with $v0 still set to -1
+	blt $a2, $0, return_get_pocket	# Negative distance is wrong too
 
 	# Check player is valid
 	li $t0, 'B'
@@ -475,6 +478,10 @@ verify_move:
 	li $v0, 1				# Move is legal
 	
 	return_verify_move:
+	bne $s0, $0, skipZeroDistance
+	li $v0, -2
+	
+	skipZeroDistance:
 	lw $ra, 0($sp)
 	lw $s0, 4($sp)
 	addi $sp, $sp, 8
@@ -498,7 +505,7 @@ execute_move:
 	move $a1, $s4		# Put player in $a1, $a0 is already filled with state
 	move $a2, $s1		# "distance" in get_pocket is "origin_pocket" in this method.
 	jal get_pocket
-	move $s3, $v0		# Store amount of stones (for iterating with) in $s2
+	move $s3, $v0		# Store amount of stones (for iterating with) in $s3
 	# Set that pocket to 0
 	move $a0, $s0
 	move $a1, $s4
@@ -516,7 +523,7 @@ execute_move:
 	# li $v0, 11
 	# syscall
 	
-	addi $s1, $s1, -1	# Decrement distance will always go in a "clockwise" direction
+	addi $s1, $s1, -1	# Decrement distance will always go in a "counterclockwise" direction
 	addi $s3, $s3, -1	# Decrement stones
 	li $t0, -1
 	beq $s1, $t0, addToMancala	# If distance equals -1, a mancala has been reached.
@@ -537,6 +544,7 @@ execute_move:
 		bne $s5, $0, return_zero	# Check if last pocket was empty
 		lbu $t0, 5($s0)
 		bne $t0, $s4, return_zero	# Check that the last deposit was in player's row
+		sb $s1, 28($sp)			# Store the destination pocket for steal later on
 		li $v1, 1
 		j return_execute_loop
 		return_zero:
@@ -576,7 +584,7 @@ execute_move:
 		beq $t0, $t1, switchToT3
 		switchToB3:
 		sb $t1, 5($s0)
-		j advance_execute_loop
+		j skipSwitchTurn
 		switchToT3:
 		li $t1, 'T'
 		sb $t1, 5($s0)
@@ -621,17 +629,19 @@ steal:
 	move $a2, $s1
 	li $a3, 0
 	jal set_pocket
-	# Call get_pocket with 'T' as player argument, use 5 - destination_pocket to align pockets
+	# Call get_pocket with 'T' as player argument, use (num_pockets - 1) - destination_pocket to align pockets
 	move $a0, $s0
 	li $a1, 'T'
-	li $t0, 5
+	lbu $t0, 2($s0)
+	addi $t0, $t0, -1
 	sub $a2, $t0, $s1
 	jal get_pocket
 	add $s2, $s2, $v0
 	# Now set that pocket to 0
 	move $a0, $s0
 	li $a1, 'T'
-	li $t0, 5
+	lbu $t0, 2($s0)
+	addi $t0, $t0, -1
 	sub $a2, $t0, $s1
 	li $a3, 0
 	jal set_pocket
@@ -794,16 +804,16 @@ check_row:
 	jr $ra
 	
 load_moves:
-	addi $sp, $sp, -24	# The input buffer occupies 12($sp)	
+	addi $sp, $sp, -28	# The input buffer occupies 12($sp)	
 	sw $ra, 0($sp)	
 	sw $s0, 4($sp)	# Stores moves array
 	sw $s1, 8($sp)	# Stores file descriptor
 	sw $s2, 12($sp)	# Stores address of input buffer
 	sw $s3, 16($sp)	# Store amount of rows
 	sw $s4, 20($sp)	# Store number of columns
-	# ===========================================================
-	move $s0, $a0		# Store moves array so it isn't overwritten
-	addi $s2, $sp, 12	# Store address of input buffer which is at 12($sp)
+	# ===========================================================	
+	move $s0, $a0		# Store moves array so it isn't overwritten	
+	addi $s2, $sp, 24	# Store address of input buffer which is at 24($sp)
 	
 	# Open board file
 	li $v0, 13	
@@ -819,13 +829,13 @@ load_moves:
 	li $v0, -1
 	j return_load_moves
 
-	readMoves:
-	# Read # of columns
+	readMoves:	
+	# Read # of columns		
 	move $a0, $s1		# Move file descriptor to $a0
 	move $a1, $s2		# Move input buffer to $a1
 	jal readLine
 	move $s4, $v0		# Store amount of columns
-
+	
 	# Read # of rows
 	move $a0, $s1		
 	move $a1, $s2		
@@ -860,6 +870,7 @@ load_moves:
 		mflo $t1		# Contains multiple of 10
 		add $t1, $t1, $t2	# Add ones digit
 		sb $t1, 0($s0)		# Add move to moves array
+		
 		j advanceColLoop
 		
 		invalidMove:
@@ -883,36 +894,39 @@ load_moves:
 	li $v0, 16	
 	move $a0, $s1	# Move file descriptor to $a0
 	syscall
-	
 	addi $v0, $t4, -1	# Don't count the last 99 move
 	
 	lw $ra, 0($sp)	
 	lw $s0, 4($sp)	
 	lw $s1, 8($sp)	
-	lw $s2, 12($sp)	
+	lw $s2, 12($sp)				
 	lw $s3, 16($sp)
 	lw $s4, 20($sp)
-	addi $sp, $sp, 24
+	addi $sp, $sp, 28
 	jr $ra
 	
 # string moves_filename, string board_filename, GameState* state, byte[] moves, int num_moves_to_execute
 play_game:
 	lw $t0, 0($sp)		# First obtain the num_moves_to_execute from stack pointer
-	addi $sp, $sp, -20
-	sw $ra, 0($sp)		
-	sw $s0, 4($sp)		# Store state
-	sw $s1, 8($sp)		# Store moves array
-	sw $s2, 12($sp)		# Store num_moves_to_execute
-	sw $s3, 16($sp)		# Store various misc. stuff
+	addi $sp, $sp, -32
+	# Ensure nothing important occupies 0($sp)
+	sw $ra, 4($sp)		
+	sw $s0, 8($sp)		# Store state
+	sw $s1, 12($sp)		# Store moves array
+	sw $s2, 16($sp)		# Store num_moves_to_execute
+	sw $s3, 20($sp)		# Store various misc. stuff
+	sw $s4, 24($sp)		# Store individual move
+	sw $s5, 28($sp)		# Store number of valid moves
 	move $s0, $a2
 	move $s1, $a3
 	move $s2, $t0	
-	move $s3, $a0		# Store moves_filename	
+	move $s3, $a0		# Store moves_filename
+	li $s5, 0		# Count number of valid moves
 
 	# Call load_game
 	loadgame:
 	move $a0, $s0		# $a1 already contains board_filename
-	jal load_game
+	jal load_game	
 	blez $v0, returnError	# load_game's invalid return values are all <= 0
 	blez $v1, returnError
 	j loadmoves
@@ -922,29 +936,98 @@ play_game:
 	li $v1, -1
 	j return_play_game
 	
-	loadmoves:
+	loadmoves:		
 	# Call load_moves
 	move $a0, $s1
-	move $a1, $s3
-	jal load_moves
-	li $t0, -1
+	move $a1, $s3	
+	jal load_moves		
 	bgtz $v0, actually_play_game
 	li $v0, -1
 	li $v1, -1
 	j return_play_game
 	
 	actually_play_game:
+	move $s3, $v0		# Store size of moves array
+	# ===========================================================
+	game_loop:
+	beq $s2, $0, endGame	# First condition to exit: num_moves_to_execute is 0		
+	beq $s3, $0, endGame	# Second condition to exit: end of moves array has been reached
 	
+	# Obtain move from moves array
+	lbu $s4, 0($s1)
+
+	# Get amount of stones (distance) in pocket of move
+	move $a0, $s0		# State
+	lbu $a1, 5($s0)		# Get current turn
+	move $a2, $s4		# Distance
+	jal get_pocket
+	
+	# Now call verify_move
+	move $a0, $s0
+	move $a1, $s4
+	move $a2, $v0		# Amount of stones = distance
+	
+	li $t0, 99
+	bne $s4, $t0, dontSetDistanceTo99
+	li $a2, 99
+	dontSetDistanceTo99:
+	jal verify_move
+	
+	# Check if it was a skip move (verify_move returns 2), and skip executing if so
+	li $t0, 2
+	beq $v0, $t0, advanceGameLoop
+	
+	# Check if verify_move returned error
+	blez $v0, skipDecrementingNumMovesToExecute
+	
+	# Now move has to be valid (return value of 1). Call execute_move
+	move $a0, $s0
+	move $a1, $s4		# Move argument
+	jal execute_move
+	
+	# Check if execute_move returns 1 in $v1, if so steal
+	li $t0, 1
+	bne $v1, $t0, advanceGameLoop	
+		# Call steal
+		move $a0, $s0
+		lbu $a1, 0($sp)		# execute_move should've put destination_pocket in here
+		jal steal
+	
+	advanceGameLoop:
+	addi $s2, $s2, -1	# Only decrement num_moves_to_execute if valid move
+	addi $s5, $s5, 1	# Only increment valid moves count if valid move
+	# Check if either row is empty and end game if so
+	move $a0, $s0
+	jal check_row
+	beq $v0, $0, skipDecrementingNumMovesToExecute
+	j endGame
+	
+	skipDecrementingNumMovesToExecute:
+	addi $s1, $s1, 1	# Increment array position
+	addi $s3, $s3, -1	# Decrement size of array remaining
+	j game_loop
+	# ===========================================================
+	
+	endGame:
+	# Check if either row is empty and end game if so
+	move $a0, $s0
+	jal check_row
+	beq $v0, $0, fillOutV1
+	move $v0, $v1		# $v0 is not 0 so there has to be either a win or a tie
+	fillOutV1:
+	move $v1, $s5			# Put number of valid moves executed
 	
 	return_play_game:
-	lw $ra, 0($sp)
-	lw $s0, 4($sp)
-	lw $s1, 8($sp)
-	lw $s2, 12($sp)
-	lw $s3, 16($sp)
-	addi $sp, $sp, 20
+	lw $ra, 4($sp)
+	lw $s0, 8($sp)
+	lw $s1, 12($sp)
+	lw $s2, 16($sp)
+	lw $s3, 20($sp)
+	lw $s4, 24($sp)
+	lw $s5, 28($sp)
+	addi $sp, $sp, 32
 	jr $ra
-	
+
 print_board:
 	jr $ra
 	

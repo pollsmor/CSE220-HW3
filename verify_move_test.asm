@@ -1,6 +1,6 @@
 .data
 origin_pocket: .byte 2
-distance: .byte 98
+distance: .byte 0
 .align 2
 state:        
     .byte 0         # bot_mancala       	(byte #0)
