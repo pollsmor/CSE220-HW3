@@ -514,15 +514,7 @@ execute_move:
 	jal set_pocket
 		
 	# ===================================================================================
-	decrement_stones_loop:	
-	# Uncomment to look at the placing of stones step by step.
-	# addi $a0, $s0, 6
-	# li $v0, 4
-	# syscall
-	# li $a0, '\n'
-	# li $v0, 11
-	# syscall
-	
+	decrement_stones_loop:		
 	addi $s1, $s1, -1	# Decrement distance will always go in a "counterclockwise" direction
 	addi $s3, $s3, -1	# Decrement stones
 	li $t0, -1
@@ -553,10 +545,12 @@ execute_move:
 		
 	addToMancala:
 	# Check whether $s4 matches up with the (current) turn, and add to mancala accordingly.
+	addi $s3, $s3, 1			# Add to stones in case mancala is not the turn's
 	lbu $s1, 2($s0)				# Reset distance to pockets - 1
 	lbu $t0, 5($s0)				# Current turn
 	bne $s4, $t0, switchRow			# If $t0 != $s4, skip adding to mancala
 	# Call collect_stones and increment mancala by 1
+	addi $s3, $s3, -1			# It is the turn's mancala so decrement stones again
 	move $a0, $s0
 	lbu $a1, 5($s0)
 	li $a2, 1
@@ -590,6 +584,19 @@ execute_move:
 		sb $t1, 5($s0)
 	
 	skipSwitchTurn:
+	# Increment turns	
+	lbu $t0, 4($s0)
+	addi $t0, $t0, 1
+	sb $t0, 4($s0)
+	
+	# Uncomment for step by step
+	# addi $a0, $s0, 6
+	# li $v0, 4
+	# syscall
+	# li $a0, '\n'
+	# li $v0, 11
+	# syscall
+	
 	move $v0, $s2				# Return stones added to mancala
 	
 	lw $ra, 0($sp)
@@ -889,13 +896,13 @@ load_moves:
 	addi $s3, $s3, -1	# Decrement rows remaining
 	bne $s3, $0, rowLoop
 
-	return_load_moves:
 	# Close board file
 	li $v0, 16	
 	move $a0, $s1	# Move file descriptor to $a0
 	syscall
 	addi $v0, $t4, -1	# Don't count the last 99 move
 	
+	return_load_moves:
 	lw $ra, 0($sp)	
 	lw $s0, 4($sp)	
 	lw $s1, 8($sp)	
@@ -908,7 +915,7 @@ load_moves:
 # string moves_filename, string board_filename, GameState* state, byte[] moves, int num_moves_to_execute
 play_game:
 	lw $t0, 0($sp)		# First obtain the num_moves_to_execute from stack pointer
-	addi $sp, $sp, -32
+	addi $sp, $sp, -28
 	# Ensure nothing important occupies 0($sp)
 	sw $ra, 4($sp)		
 	sw $s0, 8($sp)		# Store state
@@ -916,12 +923,10 @@ play_game:
 	sw $s2, 16($sp)		# Store num_moves_to_execute
 	sw $s3, 20($sp)		# Store various misc. stuff
 	sw $s4, 24($sp)		# Store individual move
-	sw $s5, 28($sp)		# Store number of valid moves
 	move $s0, $a2
 	move $s1, $a3
 	move $s2, $t0	
 	move $s3, $a0		# Store moves_filename
-	li $s5, 0		# Count number of valid moves
 
 	# Call load_game
 	loadgame:
@@ -940,7 +945,7 @@ play_game:
 	# Call load_moves
 	move $a0, $s1
 	move $a1, $s3	
-	jal load_moves		
+	jal load_moves					
 	bgtz $v0, actually_play_game
 	li $v0, -1
 	li $v1, -1
@@ -972,12 +977,12 @@ play_game:
 	li $a2, 99
 	dontSetDistanceTo99:
 	jal verify_move
-	
+		
 	# Check if it was a skip move (verify_move returns 2), and skip executing if so
 	li $t0, 2
 	beq $v0, $t0, advanceGameLoop
 	
-	# Check if verify_move returned error
+	# Check if verify_move returned error	
 	blez $v0, skipDecrementingNumMovesToExecute
 	
 	# Now move has to be valid (return value of 1). Call execute_move
@@ -995,11 +1000,10 @@ play_game:
 	
 	advanceGameLoop:
 	addi $s2, $s2, -1	# Only decrement num_moves_to_execute if valid move
-	addi $s5, $s5, 1	# Only increment valid moves count if valid move
 	# Check if either row is empty and end game if so
 	move $a0, $s0
 	jal check_row
-	beq $v0, $0, skipDecrementingNumMovesToExecute
+	beq $v0, $0, skipDecrementingNumMovesToExecute	
 	j endGame
 	
 	skipDecrementingNumMovesToExecute:
@@ -1015,7 +1019,7 @@ play_game:
 	beq $v0, $0, fillOutV1
 	move $v0, $v1		# $v0 is not 0 so there has to be either a win or a tie
 	fillOutV1:
-	move $v1, $s5			# Put number of valid moves executed
+	lbu $v1, 4($s0)		# Moves executed is stored in byte 4 of state
 	
 	return_play_game:
 	lw $ra, 4($sp)
@@ -1024,8 +1028,7 @@ play_game:
 	lw $s2, 16($sp)
 	lw $s3, 20($sp)
 	lw $s4, 24($sp)
-	lw $s5, 28($sp)
-	addi $sp, $sp, 32
+	addi $sp, $sp, 28
 	jr $ra
 
 print_board:

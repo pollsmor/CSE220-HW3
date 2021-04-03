@@ -28,17 +28,13 @@
 
 03 < P1
 
-05 < P2
-
-05 < P1
-
 00 < P2
 
 Top Row Empty. Game Over.
 
-31 < Player 1 Score
+35 < Player 1 Score
 
-17 < Player 2 Score
+13 < Player 2 Score
 
 
-0304030405050304040005030302040103050500
+030403040505030404000503030204010300

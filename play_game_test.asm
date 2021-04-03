@@ -29,14 +29,14 @@ addi $sp, $sp, 4
 # You must write your own code here to check the correctness of the function implementation.
 move $a0, $v0
 li $v0, 1
-#syscall
+syscall
 li $a0, '\n'
 li $v0, 11
 syscall
 
 move $a0, $v1
 li $v0, 1
-#syscall
+syscall
 li $a0, '\n'
 li $v0, 11
 syscall
