@@ -1,5 +1,5 @@
 .data
-filename: .asciiz "moves02.txt"
+filename: .asciiz "moves01.txt"
 .align 0
 moves: .byte 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .text
@@ -15,10 +15,6 @@ li $v0, 1
 syscall
 li $a0, '\n'
 li $v0, 11
-syscall
-
-move $a0, $s2
-li $v0, 1
 syscall
 
 li $v0, 10

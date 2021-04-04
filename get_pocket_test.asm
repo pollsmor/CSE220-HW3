@@ -1,5 +1,5 @@
 .data
-player: .byte 'B'
+player: .byte 'D'
 distance: .byte 3
 .align 2
 state:        
@@ -11,7 +11,7 @@ state:
     .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
-    "0108070601000404040404040400"
+    "0104040407040420010240000500"
 .text
 .globl main
 main:

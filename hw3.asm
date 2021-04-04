@@ -324,16 +324,22 @@ set_pocket:
 
 	# Check player is valid
 	li $t0, 'B'
-	beq $a1, $t0, set_pocket_bot
+	beq $a1, $t0, checkSize
 	li $t0, 'T'
-	beq $a1, $t0, set_pocket_top	
+	beq $a1, $t0, checkSize	
 	j return_set_pocket		# Invalid player should just return with $v0 still set to -1
 
+	checkSize:
 	li $v0, -2			# Assume invalid size
 	# Check size constraint
 	li $t0, 99
 	bgt $a3, $t0, return_set_pocket	# Invalid size should just return with $v0 still set to -2 
 	blt $a3, $0, return_set_pocket
+	
+	li $t0, 'B'
+	beq $a1, $t0, set_pocket_bot
+	li $t0, 'T'
+	beq $a1, $t0, set_pocket_top	
 
 	set_pocket_bot:
 	# Number of bytes to reach bottomrightmost pocket from byte 0 of BOARD is 2 * 2 * bot_pockets

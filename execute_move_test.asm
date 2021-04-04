@@ -1,5 +1,5 @@
 .data
-origin_pocket: .byte 1
+origin_pocket: .byte 4
 .align 2
 state:        
     .byte 0         # bot_mancala       	(byte #0)
@@ -7,10 +7,10 @@ state:
     .byte 6         # bot_pockets       	(byte #2)
     .byte 6         # top_pockets        	(byte #3)
     .byte 0         # moves_executed	(byte #4)
-    .byte 'T'    # player_turn        		(byte #5)
+    .byte 'B'    # player_turn        		(byte #5)
     # game_board                     		(bytes #6-end)
     .asciiz
-    "0004200404040404070404040400"
+    "0004040404040404070404040400"
 .text
 .globl main
 main:
