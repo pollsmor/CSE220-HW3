@@ -116,16 +116,18 @@ load_game:
 	addi $s0, $s0, 2	# Move on to next pocket
 	addi $t3, $t3, -1	
 	bgtz $t3, top_contents_loop
-	
+	# ===========================================================
 	# Loop to read contents of bottom row (fifth line) [first skip past \r\n or \n]
 	li $a2, 1		# Set amount of characters to read to 1
 	li $v0, 14
 	syscall
 	li $t0, '\r'
 	lbu $t1, 0($s2)
-	bne $t0, $t1, bot_contents_loop
+	bne $t0, $t1, read_bot_contents
 	li $v0, 14		# \r skipped, now skip the \n
 	syscall		
+	
+	read_bot_contents:
 	li $a2, 2		# Set amount of characters to read back to 2	
 	bot_contents_loop:
 	li $v0, 14		# Read syscall

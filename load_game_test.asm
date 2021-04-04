@@ -1,5 +1,5 @@
 .data
-board_filename: .asciiz "gameE3.txt"
+board_filename: .asciiz "game03.txt"
 v0_value: .asciiz " (v0 return value)"
 v1_value: .asciiz " (v1 return value)"
 .align 2
