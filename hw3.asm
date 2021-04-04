@@ -450,10 +450,6 @@ verify_move:
 	li $v0, 2		# Assume return value is 2 at first
 	li $t0, 99
 	bne $t0, $a2, skipChangeTurn
-	# Add turn
-	lbu $t0, 4($a0)
-	addi $t0, $t0, 1
-	sb $t0, 4($a0)
 	# Swap turns
 	lbu $t0, 5($a0)		# Get current turn
 	li $t1, 'B'
@@ -984,8 +980,14 @@ play_game:
 		
 	# Check if it was a skip move (verify_move returns 2), and skip executing if so
 	li $t0, 2
-	beq $v0, $t0, advanceGameLoop
+	bne $v0, $t0, not99
+	# Add to moves_executed
+	lbu $t0, 4($s0)
+	addi $t0, $t0, 1
+	sb $t0, 4($s0)
+	j advanceGameLoop
 	
+	not99:
 	# Check if verify_move returned error	
 	blez $v0, skipDecrementingNumMovesToExecute
 	
@@ -1036,8 +1038,61 @@ play_game:
 	jr $ra
 
 print_board:
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)		# Store state
+	move $s0, $a0
 	
+	# Obtain amount of pockets
+	lbu $t0, 2($s0)
 
+	# Move state to game_board
+	addi $s0, $s0, 6
+
+	# Print top mancala (bytes 0 and 1)
+	li $v0, 11
+	lbu $a0, 0($s0)
+	syscall
+	lbu $a0, 1($s0)
+	syscall
+	li $a0, '\n'
+	syscall
+	
+	sll $t0, $t0, 2		# Multiply by 4	
+	add $s0, $s0, $t0	
+	addi $s0, $s0, 2	# Add 2 to reach bottom mancula
+	# Print bottom mancula
+	li $v0, 11
+	lbu $a0, 0($s0)
+	syscall
+	lbu $a0, 1($s0)
+	syscall
+	li $a0, '\n'
+	syscall
+	
+	# Set state to first byte of first pocket on top row
+	sub $s0, $s0, $t0
+	# Loop through next 4 * pocket_amt characters in game_board and print
+	li $v0, 11
+	srl $t1, $t0, 1			# Split top and bottom part of board
+	print_board_top_loop:
+		lbu $a0, 0($s0)
+		syscall
+		addi $s0, $s0, 1	# Increment state pointer
+		addi $t1, $t1, -1	# Decrement 4 * pocket_amt
+		bne $t1, $0, print_board_top_loop
+		
+	li $a0, '\n'
+	syscall
+	srl $t1, $t0, 1
+	print_board_bot_loop:
+		lbu $a0, 0($s0)
+		syscall
+		addi $s0, $s0, 1	# Increment state pointer
+		addi $t1, $t1, -1	# Decrement 4 * pocket_amt
+		bne $t1, $0, print_board_bot_loop
+
+	lw $s0, 0($sp)
+	addi $sp, $sp, 4
 	jr $ra
 	
 write_board:
