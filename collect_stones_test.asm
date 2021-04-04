@@ -30,7 +30,7 @@ li $a0, '\n'
 li $v0, 11
 syscall
 
-la $t0, state		# state new
+la $t0, state		# state old
 addi $a0, $t0, 6
 li $v0, 4
 syscall

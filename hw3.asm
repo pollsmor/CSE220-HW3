@@ -317,12 +317,6 @@ get_pocket:
 	jr $ra
 	
 set_pocket:
-	li $v0, -2			# Assume invalid size
-	# Check size constraint
-	li $t0, 99
-	bgt $a3, $t0, return_set_pocket	# Invalid size should just return with $v0 still set to -2 
-	blt $a3, $0, return_set_pocket
-
 	li $v0, -1			# Assume invalid distance/player
 	# Check distance is valid
 	lbu $t1, 2($a0)			# Get bot_pockets, valid distance is max bot_pockets - 1
@@ -334,6 +328,12 @@ set_pocket:
 	li $t0, 'T'
 	beq $a1, $t0, set_pocket_top	
 	j return_set_pocket		# Invalid player should just return with $v0 still set to -1
+
+	li $v0, -2			# Assume invalid size
+	# Check size constraint
+	li $t0, 99
+	bgt $a3, $t0, return_set_pocket	# Invalid size should just return with $v0 still set to -2 
+	blt $a3, $0, return_set_pocket
 
 	set_pocket_bot:
 	# Number of bytes to reach bottomrightmost pocket from byte 0 of BOARD is 2 * 2 * bot_pockets
@@ -436,6 +436,7 @@ collect_stones:
 	sub $t3, $t0, $t2	# $t3 now contains ones digit
 	addi $t3, $t3, 48	# Convert ones digit to equivalent ASCII value
 	sb $t3, 7($a0)		# Store into second byte game_board
+	move $v0, $a2
 	
 	return_collect_stones:
 	jr $ra
@@ -462,14 +463,26 @@ verify_move:
 	j return_verify_move
 	
 	skipChangeTurn:
+	# Check origin_pocket is valid
+	li $v0, -1
+	blt $a1, $0, invalidOriginPocket
+	lbu $t0, 2($a0)		# Amount of pockets
+	blt $a1, $t0, validPocketSize
+	
+	invalidOriginPocket:
+	li $v0, -1
+	j return_verify_move
+	
+	validPocketSize:
 	# Run get_pocket, $a0 is already the state argument
 	move $a2, $a1		# "Distance" in get_pocket = "origin_pocket" in verify_move
 	lbu $a1, 5($a0)		# Get current turn into $a1
 	jal get_pocket
-	li $t0, -1		# If $v0 from get_pocket is -1, distance (origin_pocket) is invalid
-	beq $v0, $t0, return_verify_move
-	beq $v0, $0, return_verify_move
+	bne $v0, $0, not_zero_stones
+	li $v0, 0
+	j return_verify_move
 	
+	not_zero_stones:	
 	# Checking -2 return error case
 	move $t0, $v0		# Move amount of stones to $t0 (it is valid)
 	li $v0, -2		# Assume return value is -2 at first
@@ -478,10 +491,6 @@ verify_move:
 	li $v0, 1				# Move is legal
 	
 	return_verify_move:
-	bne $s0, $0, skipZeroDistance
-	li $v0, -2
-	
-	skipZeroDistance:
 	lw $ra, 0($sp)
 	lw $s0, 4($sp)
 	addi $sp, $sp, 8
