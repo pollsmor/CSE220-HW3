@@ -41,6 +41,53 @@ li $a0, '\n'
 li $v0, 11
 syscall
 
+la $t0, state
+lbu $a0, 0($t0)
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 1($t0)
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 2($t0)
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 3($t0)
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 4($t0)
+li $v0, 1
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+lbu $a0, 5($t0)
+li $v0, 11
+syscall
+li $a0, '\n'
+li $v0, 11
+syscall
+
+addi $a0, $t0, 6
+li $v0, 4
+syscall
+
 li $v0, 10
 syscall
 
