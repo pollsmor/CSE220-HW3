@@ -1091,11 +1091,142 @@ print_board:
 		addi $t1, $t1, -1	# Decrement 4 * pocket_amt
 		bne $t1, $0, print_board_bot_loop
 
+	li $a0, '\n'
+	syscall
+
 	lw $s0, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
 	
 write_board:
+	addi $sp, $sp, -28
+	# Store "output.txt\0" string from bytes 0-11 (11 characters)
+	li $t0, 'o'
+	sb $t0, 0($sp)
+	li $t0, 'u'
+	sb $t0, 1($sp)
+	li $t0, 't'
+	sb $t0, 2($sp)
+	li $t0, 'p'
+	sb $t0, 3($sp)
+	li $t0, 'u'
+	sb $t0, 4($sp)
+	li $t0, 't'
+	sb $t0, 5($sp)
+	li $t0, '.'
+	sb $t0, 6($sp)
+	li $t0, 't'
+	sb $t0, 7($sp)
+	li $t0, 'x'
+	sb $t0, 8($sp)
+	li $t0, 't'
+	sb $t0, 9($sp)
+	sb $0, 10($sp)
+	
+	sw $s0, 12($sp)		# Store state
+	sw $s1, 16($sp)		# Store file descriptor
+	sw $s2, 20($sp)		# Store address of write buffer
+	move $s0, $a0
+	addi $s2, $sp, 24		# Set write buffer at 24($sp) to 27($sp)
+	
+	# Open file
+	li $v0, 13
+	move $a0, $sp		# "output.txt" stored at $sp, null-terminated
+	li $a1, 1		# Write flag
+	syscall
+	move $s1, $v0		# Store file descriptor
+	bgtz $s1, write
+	# Close file
+	li $v0, 16
+	move $a0, $s1
+	syscall
+	li $v0, -1
+	j return_write_board
+	
+	write:
+	# Obtain amount of pockets
+	lbu $t0, 2($s0)
+
+	# Move state to game_board
+	addi $s0, $s0, 6
+
+	move $a0, $s1		# File descriptor
+	move $a1, $s2		# Address of write buffer
+	li $a2, 1		# Only write 1 character at once
+	# Write top mancala (bytes 0 and 1)
+	lbu $t1, 0($s0)
+	sb $t1, 0($s2)		# Store character at buffer
+	li $v0, 15
+	syscall			# Write 1 character at buffer to file
+	lbu $t1, 1($s0)
+	sb $t1, 0($s2)
+	li $v0, 15
+	syscall
+	li $t1, '\n'
+	sb $t1, 0($s2)
+	li $v0, 15
+	syscall
+	
+	sll $t0, $t0, 2		# Multiply by 4	
+	add $s0, $s0, $t0	
+	addi $s0, $s0, 2	# Add 2 to reach bottom mancula
+	# Print bottom mancula
+	lbu $t1, 0($s0)
+	sb $t1, 0($s2)		# Store character at buffer
+	li $v0, 15
+	syscall			# Write 1 character at buffer to file
+	lbu $t1, 1($s0)
+	sb $t1, 0($s2)
+	li $v0, 15
+	syscall
+	li $t1, '\n'
+	sb $t1, 0($s2)
+	li $v0, 15
+	syscall
+	
+	# Set state to first byte of first pocket on top row
+	sub $s0, $s0, $t0
+	# Loop through next 4 * pocket_amt characters in game_board and print
+	srl $t1, $t0, 1			# Split top and bottom part of board
+	write_board_top_loop:
+		lbu $t2, 0($s0)
+		sb $t2, 0($s2)
+		li $v0, 15
+		syscall
+		addi $s0, $s0, 1	# Increment state pointer
+		addi $t1, $t1, -1	# Decrement 4 * pocket_amt
+		bne $t1, $0, write_board_top_loop
+		
+	li $t2, '\n'
+	sb $t2, 0($s2)
+	li $v0, 15
+	syscall
+	srl $t1, $t0, 1
+	write_board_bot_loop:
+		lbu $t2, 0($s0)
+		sb $t2, 0($s2)
+		li $v0, 15
+		syscall
+		addi $s0, $s0, 1	# Increment state pointer
+		addi $t1, $t1, -1	# Decrement 4 * pocket_amt
+		bne $t1, $0, write_board_bot_loop
+
+	li $t2, '\n'
+	sb $t2, 0($s2)
+	li $v0, 15
+	syscall
+
+	# Close file
+	li $v0, 16
+	move $a0, $s1
+	syscall
+	li $v0, 1
+
+	return_write_board:
+	lw $s0, 12($sp)
+	lw $s1, 16($sp)
+	lw $s2, 20($sp)
+	addi $sp, $sp, 28
 	jr $ra
 	
 ############################ DO NOT CREATE A .data SECTION ############################
