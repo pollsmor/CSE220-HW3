@@ -975,7 +975,7 @@ play_game:
 	ble $s3, $0, endGame	# Second condition to exit: end of moves array has been reached
 	
 	# Obtain move from moves array
-	lbu $s4, 0($s1)
+	lb $s4, 0($s1)
 
 	# Get amount of stones (distance) in pocket of move
 	move $a0, $s0		# State
