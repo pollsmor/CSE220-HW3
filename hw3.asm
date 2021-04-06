@@ -553,7 +553,6 @@ execute_move:
 		bne $s5, $0, return_zero	# Check if last pocket was empty
 		lbu $t0, 5($s0)
 		bne $t0, $s4, return_zero	# Check that the last deposit was in player's row
-		sb $s1, 28($sp)			# Store the destination pocket for steal later on
 		li $v1, 1
 		j return_execute_loop
 		return_zero:
@@ -933,13 +932,13 @@ load_moves:
 play_game:
 	lw $t0, 0($sp)		# First obtain the num_moves_to_execute from stack pointer
 	addi $sp, $sp, -28
-	# Ensure nothing important occupies 0($sp)
-	sw $ra, 4($sp)		
-	sw $s0, 8($sp)		# Store state
-	sw $s1, 12($sp)		# Store moves array
-	sw $s2, 16($sp)		# Store num_moves_to_execute
-	sw $s3, 20($sp)		# Store various misc. stuff
-	sw $s4, 24($sp)		# Store individual move
+	sw $ra, 0($sp)		
+	sw $s0, 4($sp)		# Store state
+	sw $s1, 8($sp)		# Store moves array
+	sw $s2, 12($sp)		# Store num_moves_to_execute
+	sw $s3, 16($sp)		# Store various misc. stuff
+	sw $s4, 20($sp)		# Store individual move
+	sw $s5, 24($sp)		# Store destination_pocket in case of steal
 	move $s0, $a2
 	move $s1, $a3
 	move $s2, $t0	
@@ -1008,7 +1007,39 @@ play_game:
 	# Check if verify_move returned error	
 	blez $v0, skipDecrementingNumMovesToExecute
 	
-	# Now move has to be valid (return value of 1). Call execute_move
+	# Now move has to be valid (return value of 1). First record where the stone ends up 
+	# (in case of steal), then call execute_move
+	# =============================================================================
+		# Get amount of stones again in the move pocket
+		move $a0, $s0
+		lbu $a1, 5($s0)
+		move $a2, $s4
+		jal get_pocket
+		move $s5, $s4		# Keep track of which pocket I'm on/distance from mancala
+		lbu $t0, 5($s0)		# Store row we're currently on
+		move $t1, $t0		# Store current turn
+		simulateExecute:
+			addi $s5, $s5, -1
+			bge $s5, $0, advanceSimulation
+			# Switch rows and reset distance to amt of pockets
+			lbu $s5, 2($s0)
+			li $t2, 'T'
+			beq $t0, $t2, simulateSwitchTtoB
+			simulateSwitchBtoT:
+			li $t0, 'T'
+			j checkIfShouldPlaceInMancala
+			simulateSwitchTtoB:
+			li $t0, 'B'
+			
+			checkIfShouldPlaceInMancala:
+			bne $t0, $t1, dontRemoveStone
+			
+			advanceSimulation:
+			addi $v0, $v0, -1
+			dontRemoveStone:
+			bne $v0, $0, simulateExecute
+	# =============================================================================
+	
 	move $a0, $s0
 	move $a1, $s4		# Move argument
 	jal execute_move
@@ -1018,7 +1049,7 @@ play_game:
 	bne $v1, $t0, advanceGameLoop	
 		# Call steal
 		move $a0, $s0
-		lbu $a1, 0($sp)		# execute_move should've put destination_pocket in here
+		move $a1, $s5		# $s5 contains destination_pocket calculated above
 		jal steal
 	
 	advanceGameLoop:
@@ -1045,12 +1076,13 @@ play_game:
 	lbu $v1, 4($s0)		# Moves executed is stored in byte 4 of state
 	
 	return_play_game:
-	lw $ra, 4($sp)
-	lw $s0, 8($sp)
-	lw $s1, 12($sp)
-	lw $s2, 16($sp)
-	lw $s3, 20($sp)
-	lw $s4, 24($sp)
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)
+	lw $s1, 8($sp)
+	lw $s2, 12($sp)
+	lw $s3, 16($sp)
+	lw $s4, 20($sp)
+	lw $s5, 24($sp)
 	addi $sp, $sp, 28
 	jr $ra
 
