@@ -967,15 +967,20 @@ play_game:
 	li $v1, -1
 	j return_play_game
 	
-	actually_play_game:
+	actually_play_game:	
 	move $s3, $v0		# Store size of moves array
+	
+	# Check if game isn't already over
+	move $a0, $s0
+	jal check_row
+	bne $v0, $0, endGame
 	# ===========================================================
 	game_loop:
 	ble $s2, $0, endGame	# First condition to exit: num_moves_to_execute is 0		
 	ble $s3, $0, endGame	# Second condition to exit: end of moves array has been reached
 	
 	# Obtain move from moves array
-	lb $s4, 0($s1)
+	lbu $s4, 0($s1)
 
 	# Get amount of stones (distance) in pocket of move
 	move $a0, $s0		# State
