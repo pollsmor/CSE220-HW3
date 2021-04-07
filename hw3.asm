@@ -688,17 +688,19 @@ steal:
 	move $a2, $s1
 	li $a3, 0
 	jal set_pocket
-	# Call get_pocket with 'B' as player argument, use 5 - destination_pocket to align pockets
+	# Call get_pocket with 'B' as player argument, use (num_pockets - 1) - destination_pocket to align pockets
 	move $a0, $s0
 	li $a1, 'B'
-	li $t0, 5
+	lbu $t0, 2($s0)
+	addi $t0, $t0, -1
 	sub $a2, $t0, $s1
 	jal get_pocket
 	add $s2, $s2, $v0
 	# Now set that pocket to 0
 	move $a0, $s0
 	li $a1, 'B'
-	li $t0, 5
+	lbu $t0, 2($s0)
+	addi $t0, $t0, -1
 	sub $a2, $t0, $s1
 	li $a3, 0
 	jal set_pocket
@@ -980,7 +982,7 @@ play_game:
 	ble $s3, $0, endGame	# Second condition to exit: end of moves array has been reached
 	
 	# Obtain move from moves array
-	lbu $s4, 0($s1)
+	lb $s4, 0($s1)
 
 	# Get amount of stones (distance) in pocket of move
 	move $a0, $s0		# State
@@ -996,6 +998,7 @@ play_game:
 	li $t0, 99
 	bne $s4, $t0, dontSetDistanceTo99
 	li $a2, 99
+	
 	dontSetDistanceTo99:
 	jal verify_move
 		
@@ -1043,8 +1046,7 @@ play_game:
 			addi $v0, $v0, -1
 			dontRemoveStone:
 			bne $v0, $0, simulateExecute
-	# =============================================================================
-	
+	# =============================================================================	
 	move $a0, $s0
 	move $a1, $s4		# Move argument
 	jal execute_move
