@@ -459,7 +459,10 @@ verify_move:
 	li $v0, 2		# Assume return value is 2 at first
 	li $t0, 99
 	bne $t0, $a2, skipChangeTurn
-	# Swap turns
+	# Swap turns and increment moves_executed
+	lbu $t0, 4($a0)
+	addi $t0, $t0, 1
+	sb $t0, 4($a0)
 	lbu $t0, 5($a0)		# Get current turn
 	li $t1, 'B'
 	beq $t0, $t1, switchToT
@@ -1005,10 +1008,6 @@ play_game:
 	# Check if it was a skip move (verify_move returns 2), and skip executing if so
 	li $t0, 2
 	bne $v0, $t0, not99
-	# Add to moves_executed
-	lbu $t0, 4($s0)
-	addi $t0, $t0, 1
-	sb $t0, 4($s0)
 	j advanceGameLoop
 	
 	not99:
