@@ -1213,6 +1213,15 @@ write_board:
 	sb $t1, 0($s2)		# Store character at buffer
 	li $v0, 15
 	syscall			# Write 1 character at buffer to file
+	bge $v0, $0, writeAllowed	# On the off chance writing permissions are not granted
+	# Close file
+	li $v0, 16
+	move $a0, $s1
+	syscall
+	li $v0, -1
+	j return_write_board
+	
+	writeAllowed:
 	lbu $t1, 1($s0)
 	sb $t1, 0($s2)
 	li $v0, 15
